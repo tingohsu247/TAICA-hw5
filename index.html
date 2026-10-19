@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>點擊與自動升級計分網頁</title>
+    <style>
+        /* 1. 全螢幕動態漸層背景 */
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradientBG 10s ease infinite;
+            user-select: none;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* 2. 主卡片容器 (玻璃擬態) */
+        .game-card {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(12px);
+            padding: 32px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            width: 320px;
+            text-align: center;
+            color: #ffffff;
+        }
+
+        /* 3. 分數與 CPS 標示 */
+        .score-value {
+            font-size: 3.5rem;
+            font-weight: 900;
+            margin: 8px 0;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+
+        .cps-badge {
+            display: inline-block;
+            background: rgba(0, 0, 0, 0.25);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+        }
+
+        /* 4. 手動點擊按鈕 */
+        .click-btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #2d3748;
+            background: #ffffff;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            transition: transform 0.1s, box-shadow 0.2s;
+        }
+
+        .click-btn:active {
+            transform: scale(0.93);
+        }
+
+        /* 5. 升級商店區塊 */
+        .shop-box {
+            margin-top: 24px;
+            background: rgba(255, 255, 255, 0.25);
+            padding: 16px;
+            border-radius: 16px;
+            text-align: left;
+        }
+
+        .upgrade-btn {
+            width: 100%;
+            margin-top: 10px;
+            padding: 12px;
+            background: #f59e0b;
+            color: #ffffff;
+            font-weight: bold;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .upgrade-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #6b7280;
+        }
+
+        .bump {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-card">
+        <div style="font-size: 0.85rem; font-weight: 600; opacity: 0.9;">當前總分</div>
+        <div class="score-value" id="scoreDisplay">0</div>
+        <div class="cps-badge">每秒自動加分 (CPS): <span id="cpsDisplay">0</span></div>
+
+        <!-- 手動按鈕 -->
+        <button class="click-btn" id="clickBtn">點擊增加分數 (+1)</button>
+
+        <!-- 升級商店 -->
+        <div class="shop-box">
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                <span>🚀 自動升級</span>
+                <span>持有: <strong id="ownedDisplay">0</strong></span>
+            </div>
+            <button class="upgrade-btn" id="buyUpgradeBtn" disabled>
+                <span>購買自動器 (+1/s)</span>
+                <span style="font-size: 0.8rem; background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 6px;">
+                    <span id="costDisplay">10</span> 分
+                </span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 核心狀態變數
+        let score = 0;
+        let upgrades = 0;
+        const baseCost = 10;
+
+        // DOM 元件
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const cpsDisplay = document.getElementById('cpsDisplay');
+        const ownedDisplay = document.getElementById('ownedDisplay');
+        const costDisplay = document.getElementById('costDisplay');
+        const clickBtn = document.getElementById('clickBtn');
+        const buyUpgradeBtn = document.getElementById('buyUpgradeBtn');
+
+        // 計算遞增價格公式 Cost = floor(10 * 1.15^N)
+        function getCost() {
+            return Math.floor(baseCost * Math.pow(1.15, upgrades));
+        }
+
+        // 更新 UI 畫面狀態
+        function updateUI() {
+            scoreDisplay.textContent = score;
+            cpsDisplay.textContent = upgrades;
+            ownedDisplay.textContent = upgrades;
+
+            const currentCost = getCost();
+            costDisplay.textContent = currentCost;
+
+            // 判斷按鈕是否可購買
+            buyUpgradeBtn.disabled = (score < currentCost);
+        }
+
+        // 1. 手動點擊功能
+        clickBtn.addEventListener('click', () => {
+            score++;
+            updateUI();
+            
+            // 跳動動畫
+            scoreDisplay.classList.add('bump');
+            setTimeout(() => scoreDisplay.classList.remove('bump'), 100);
+        });
+
+        // 2. 購買升級功能
+        buyUpgradeBtn.addEventListener('click', () => {
+            const cost = getCost();
+            if (score >= cost) {
+                score -= cost;
+                upgrades++;
+                updateUI();
+            }
+        });
+
+        // 3. 背景每秒自動加分計時器 (1000ms)
+        setInterval(() => {
+            if (upgrades > 0) {
+                score += upgrades;
+                updateUI();
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
